@@ -1,8 +1,7 @@
-from enum import Enum
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
-import uuid
+from enum import Enum
+from typing import Optional
+from pydantic import BaseModel, Field
 
 class SourceType(str, Enum):
     CITIZEN_REPORT = "citizen_report"
@@ -14,36 +13,27 @@ class SourceType(str, Enum):
 
 class ObservationBase(BaseModel):
     timestamp: datetime
-    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees")
-    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees")
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
     source_type: SourceType
     source_id: str
-    city: Optional[str] = None
+    city: str
     corridor: Optional[str] = None
-    
-    # Pollutants
-    aqi: Optional[float] = Field(None, ge=0, le=1000)
-    pm25: Optional[float] = Field(None, ge=0)
-    pm10: Optional[float] = Field(None, ge=0)
-    no2: Optional[float] = Field(None, ge=0)
-    so2: Optional[float] = Field(None, ge=0)
-    co: Optional[float] = Field(None, ge=0)
-    o3: Optional[float] = Field(None, ge=0)
-    
-    # Weather
-    temperature: Optional[float] = None
-    humidity: Optional[float] = Field(None, ge=0, le=100)
-    wind_speed: Optional[float] = Field(None, ge=0)
-    wind_direction: Optional[float] = Field(None, ge=0, le=360)
-    rainfall: Optional[float] = Field(None, ge=0)
-    
-    # Metadata
-    confidence: float = Field(..., ge=0.0, le=1.0)
+    aqi: float = Field(..., ge=0.0, le=1000.0)
+    pm25: Optional[float] = Field(None, ge=0.0)
+    pm10: Optional[float] = Field(None, ge=0.0)
+    no2: Optional[float] = Field(None, ge=0.0)
+    so2: Optional[float] = Field(None, ge=0.0)
+    co: Optional[float] = Field(None, ge=0.0)
+    o3: Optional[float] = Field(None, ge=0.0)
+    wind_speed_kmh: Optional[float] = Field(None, ge=0.0)
+    wind_direction_deg: Optional[float] = Field(None, ge=0.0, le=360.0)
+    weather_condition: Optional[str] = None
+    confidence: float = Field(1.0, ge=0.0, le=1.0)
     data_quality_flag: bool = True
 
 class ObservationCreate(ObservationBase):
     pass
 
 class Observation(ObservationBase):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-
+    id: str
