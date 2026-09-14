@@ -1,25 +1,14 @@
-import { config } from './config';
-import { Observation } from '../types/observation';
+import { API_BASE_URL } from "./config";
+import type { Observation } from "../types/observation";
+import type { Hotspot } from "../types/hotspot";
 
-export class ApiClient {
-  static async getHealth() {
-    const res = await fetch(`${config.apiBaseUrl}/api/v1/health`);
-    return res.json();
-  }
-
-  static async getObservations(city?: string): Promise<Observation[]> {
-    const url = new URL(`${config.apiBaseUrl}/api/v1/observations`);
-    if (city) url.searchParams.append('city', city);
-    
-    const res = await fetch(url.toString(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch observations');
-    return res.json();
-  }
-
-  static async getCities(): Promise<string[]> {
-    const res = await fetch(`${config.apiBaseUrl}/api/v1/cities`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return res.json();
-  }
+export async function getObservations(): Promise<Observation[]> {
+  const res=await fetch(`${API_BASE_URL}/api/v1/observations`,{cache:"no-store"});
+  if(!res.ok) throw new Error("Failed to load observations");
+  return res.json();
 }
-
+export async function getHotspots(): Promise<Hotspot[]> {
+  const res=await fetch(`${API_BASE_URL}/api/v1/hotspots`,{cache:"no-store"});
+  if(!res.ok) throw new Error("Failed to load hotspots");
+  return res.json();
+}

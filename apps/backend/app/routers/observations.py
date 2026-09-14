@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from app.models.observation import Observation, ObservationCreate
 from app.repositories.observation_repo import get_repository
@@ -7,8 +7,7 @@ from app.services.observation_service import ObservationService
 router = APIRouter(prefix="/api/v1/observations", tags=["Observations"])
 
 def get_service() -> ObservationService:
-    repo = get_repository()
-    return ObservationService(repo)
+    return ObservationService(get_repository())
 
 @router.post("", response_model=Observation)
 def create_observation(obs: ObservationCreate, service: ObservationService = Depends(get_service)):
@@ -18,25 +17,25 @@ def create_observation(obs: ObservationCreate, service: ObservationService = Dep
 def get_observations(
     city: Optional[str] = None,
     corridor: Optional[str] = None,
-    min_lat: Optional[float] = Query(None, ge=-90.0, le=90.0),
-    max_lat: Optional[float] = Query(None, ge=-90.0, le=90.0),
-    min_lon: Optional[float] = Query(None, ge=-180.0, le=180.0),
-    max_lon: Optional[float] = Query(None, ge=-180.0, le=180.0),
-    center_lat: Optional[float] = Query(None, ge=-90.0, le=90.0),
-    center_lon: Optional[float] = Query(None, ge=-180.0, le=180.0),
-    radius_km: Optional[float] = Query(None, ge=0.0),
-    service: ObservationService = Depends(get_service)
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lon: Optional[float] = None,
+    max_lon: Optional[float] = None,
+    center_lat: Optional[float] = None,
+    center_lon: Optional[float] = None,
+    radius_km: Optional[float] = None,
+    service: ObservationService = Depends(get_service),
 ):
     return service.list_observations(
-        city=city, 
-        corridor=corridor, 
-        min_lat=min_lat, 
-        max_lat=max_lat, 
-        min_lon=min_lon, 
-        max_lon=max_lon,
-        center_lat=center_lat,
-        center_lon=center_lon,
-        radius_km=radius_km
+        city,
+        corridor,
+        min_lat,
+        max_lat,
+        min_lon,
+        max_lon,
+        center_lat,
+        center_lon,
+        radius_km,
     )
 
 @router.get("/{obs_id}", response_model=Observation)
@@ -45,4 +44,3 @@ def get_observation_by_id(obs_id: str, service: ObservationService = Depends(get
     if not obs:
         raise HTTPException(status_code=404, detail="Observation not found")
     return obs
-

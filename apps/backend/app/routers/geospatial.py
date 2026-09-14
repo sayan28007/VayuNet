@@ -15,8 +15,3 @@ def get_cities(service: ObservationService = Depends(get_service)):
 @router.get("/corridors", response_model=List[str])
 def get_corridors(service: ObservationService = Depends(get_service)):
     return service.get_corridors()
-
-@router.get("/hotspots", response_model=List[dict])
-def get_hotspots(service: ObservationService = Depends(get_service)):
-    return service.derive_hotspots()
-
