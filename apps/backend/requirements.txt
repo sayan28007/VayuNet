@@ -1,6 +1,9 @@
 fastapi
 uvicorn
 pydantic
-scikit-learn
+pydantic-settings
+httpx
 numpy
+scikit-learn
 python-multipart
+google-generativeai
