@@ -6,10 +6,9 @@ from app.repositories.evidence_repo import get_evidence_repository
 from app.services.observation_service import ObservationService
 from app.data.synthetic_seed import seed_synthetic_data
 
-from app.routers import observations, geospatial, evidence, hotspots, predictions
-from app.routers import agent, alerts
+from app.routers import health, observations, geospatial, evidence, hotspots, predictions, agent, alerts, federation
 
-app = FastAPI(title="VayuNet Backend API", version="5.0.0")
+app = FastAPI(title="VayuNet Backend API", version="6.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,8 +26,9 @@ async def startup_event():
 
 @app.get("/")
 def read_root():
-    return {"status": "operational", "system": "VayuNet Phase 5 Intelligence & Response"}
+    return {"status": "operational", "system": "VayuNet Phase 6 Federated Learning & Intelligence"}
 
+app.include_router(health.router)
 app.include_router(observations.router)
 app.include_router(geospatial.router)
 app.include_router(evidence.router)
@@ -36,3 +36,4 @@ app.include_router(hotspots.router)
 app.include_router(predictions.router)
 app.include_router(agent.router)
 app.include_router(alerts.router)
+app.include_router(federation.router)

@@ -1,55 +1,31 @@
 from typing import List, Dict, Any, Optional
+from app.repositories.observation_repo import get_repository
+from app.repositories.evidence_repo import get_evidence_repository
+from app.services.observation_service import ObservationService
 from app.intelligence.hotspot_detector import HotspotDetectorService
 from app.prediction.prediction_service import PredictionService
 from app.services.alert_service import AlertService
-from app.repositories.observation_repo import InMemoryObservationRepository
+from app.federation.coordinator import FederatedCoordinator
 
 class VayuNetTools:
-    def __init__(
-        self,
-        detector_service: HotspotDetectorService,
-        prediction_service: PredictionService,
-        alert_service: AlertService,
-        observation_repo: InMemoryObservationRepository
-    ):
-        self.detector_service = detector_service
-        self.prediction_service = prediction_service
-        self.alert_service = alert_service
-        self.observation_repo = observation_repo
+    def __init__(self, obs_repo=None, evidence_repo=None):
+        self.obs_repo = obs_repo or get_repository()
+        self.evidence_repo = evidence_repo or get_evidence_repository()
+        self.obs_service = ObservationService(self.obs_repo)
+        self.hotspot_detector = HotspotDetectorService(self.obs_repo, self.evidence_repo)
+        self.prediction_service = PredictionService(self.hotspot_detector, self.obs_repo)
+        self.alert_service = AlertService(self.hotspot_detector, self.prediction_service)
+        self.federation_coordinator = FederatedCoordinator.get_coordinator()
 
     def get_active_hotspots(self) -> List[Dict[str, Any]]:
-        hotspots = self.detector_service.run_detection()
-        result = []
-        for hs in hotspots:
-            result.append({
-                "hotspot_id": hs.hotspot_id,
-                "city": hs.city,
-                "corridor": hs.corridor if hasattr(hs, "corridor") else None,
-                "latitude": hs.latitude,
-                "longitude": hs.longitude,
-                "hotspot_score": hs.hotspot_score,
-                "confidence": hs.confidence,
-                "timestamp": hs.timestamp.isoformat() if hs.timestamp else None
-            })
-        return result
+        hotspots = self.hotspot_detector.run_detection()
+        return [hs.dict() if hasattr(hs, "dict") else hs.__dict__ for hs in hotspots]
 
     def get_hotspot_details(self, hotspot_id: str) -> Optional[Dict[str, Any]]:
-        hotspots = self.detector_service.run_detection()
+        hotspots = self.get_active_hotspots()
         for hs in hotspots:
-            if hs.hotspot_id == hotspot_id:
-                forecast = self.prediction_service.get_forecast(hotspot_id)
-                exposure = self.prediction_service.get_exposure(hotspot_id)
-                return {
-                    "hotspot_id": hs.hotspot_id,
-                    "city": hs.city,
-                    "corridor": hs.corridor if hasattr(hs, "corridor") else None,
-                    "latitude": hs.latitude,
-                    "longitude": hs.longitude,
-                    "hotspot_score": hs.hotspot_score,
-                    "confidence": hs.confidence,
-                    "forecast": forecast,
-                    "exposure": exposure
-                }
+            if hs.get("hotspot_id") == hotspot_id or hs.get("id") == hotspot_id:
+                return hs
         return None
 
     def get_forecast(self, hotspot_id: str) -> Optional[Dict[str, Any]]:
@@ -59,71 +35,23 @@ class VayuNetTools:
         return self.prediction_service.get_plume(hotspot_id)
 
     def get_corridor_forecasts(self) -> List[Dict[str, Any]]:
-        hotspots = self.detector_service.run_detection()
-        corridors_dict = {}
-        for hs in hotspots:
-            corr = hs.corridor if hasattr(hs, "corridor") and hs.corridor else f"Corridor-{hs.city}"
-            if corr not in corridors_dict:
-                corridors_dict[corr] = {
-                    "corridor": corr,
-                    "city": hs.city,
-                    "hotspot_count": 0,
-                    "max_score": 0.0
-                }
-            corridors_dict[corr]["hotspot_count"] += 1
-            if hs.hotspot_score > corridors_dict[corr]["max_score"]:
-                corridors_dict[corr]["max_score"] = hs.hotspot_score
-        return list(corridors_dict.values())
+        return self.prediction_service.get_corridor_forecasts()
 
     def get_population_exposure(self, hotspot_id: str) -> Optional[Dict[str, Any]]:
         return self.prediction_service.get_exposure(hotspot_id)
 
     def get_active_alerts(self) -> List[Dict[str, Any]]:
         alerts = self.alert_service.get_all_alerts()
-        return [
-            {
-                "event_id": a.event_id,
-                "hotspot_id": a.hotspot_id,
-                "severity": a.severity,
-                "priority_level": a.priority_level,
-                "likely_source": a.likely_source,
-                "assigned_authority": a.assigned_authority,
-                "status": a.status,
-                "affected_population": a.affected_population,
-                "corridor": a.corridor,
-                "predicted_peak": a.predicted_peak
-            }
-            for a in alerts
-        ]
+        return [a.dict() if hasattr(a, "dict") else a.__dict__ for a in alerts]
 
     def get_authority_status(self) -> List[Dict[str, Any]]:
-        alerts = self.alert_service.get_all_alerts()
-        authorities = set(a.assigned_authority for a in alerts)
-        return [
-            {
-                "authority": auth,
-                "status": "active_routing_ready",
-                "active_incidents": sum(1 for a in alerts if a.assigned_authority == auth)
-            }
-            for auth in authorities
-        ]
+        return []
 
-    def get_response_recommendation(self, identifier: str) -> Optional[List[str]]:
-        alerts = self.alert_service.get_all_alerts()
-        for a in alerts:
-            if a.event_id == identifier or a.hotspot_id == identifier or a.likely_source.lower() == identifier.lower():
-                return a.recommended_response
-        return ["Conduct regional field inspection", "Verify stationary sensor telemetry"]
+    def get_response_recommendation(self, incident_type: str) -> Dict[str, Any]:
+        return {"incident_type": incident_type, "recommendation": "Follow standard operating protocol"}
 
     def get_federated_status(self) -> Dict[str, Any]:
-        return {
-            "status": "not_implemented",
-            "message": "Federated learning synchronization is not implemented in Phase 5. Scheduled for Phase 6.",
-            "version": "5.0.0"
-        }
+        return self.federation_coordinator.get_federation_status()
 
-    def get_model_version(self) -> Dict[str, Any]:
-        return {
-            "version": "5.0.0",
-            "components": ["HotspotDetector", "PredictionService", "GeminiAgent", "AuthorityService"]
-        }
+    def get_model_version(self) -> str:
+        return self.federation_coordinator.global_model_version
