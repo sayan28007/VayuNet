@@ -1,117 +1,63 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import type {
+  Hotspot,
+  Alert,
+  ForecastResponse,
+  PlumeResponse,
+  ExposureResponse,
+  CorridorPrediction,
+  FederationStatusResponse,
+  AgentChatResponse,
+  DemoResponse,
+} from "@/types/api";
+
+export type AlertAction = "acknowledge" | "action" | "resolve";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.status} ${res.statusText} at ${url}`);
+  }
+  return res.json();
+}
 
 export const api = {
-  async getHealth() {
-    const res = await fetch(`${API_BASE}/api/v1/health`);
-    if (!res.ok) throw new Error("Health check failed");
-    return res.json();
+  getHotspots(): Promise<Hotspot[]> {
+    return fetchJson<Hotspot[]>(`${API_BASE}/hotspots`);
   },
-
-  async getObservations() {
-    const res = await fetch(`${API_BASE}/api/v1/observations`);
-    if (!res.ok) throw new Error("Failed to fetch observations");
-    return res.json();
+  getAlerts(): Promise<Alert[]> {
+    return fetchJson<Alert[]>(`${API_BASE}/alerts`);
   },
-
-  async getCities() {
-    const res = await fetch(`${API_BASE}/api/v1/geospatial/cities`);
-    if (!res.ok) throw new Error("Failed to fetch cities");
-    return res.json();
+  updateAlertStatus(eventId: string, action: AlertAction): Promise<Alert> {
+    return fetchJson<Alert>(`${API_BASE}/alerts/${eventId}/${action}`, { method: "POST" });
   },
-
-  async getHotspots() {
-    const res = await fetch(`${API_BASE}/api/v1/hotspots`);
-    if (!res.ok) throw new Error("Failed to fetch hotspots");
-    return res.json();
+  getForecast(hotspotId: string): Promise<ForecastResponse> {
+    return fetchJson<ForecastResponse>(`${API_BASE}/predictions/forecast/${hotspotId}`);
   },
-
-  async getPlume(hotspotId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/predictions/plume/${hotspotId}`);
-    if (!res.ok) throw new Error("Failed to fetch plume");
-    return res.json();
+  getPlume(hotspotId: string): Promise<PlumeResponse> {
+    return fetchJson<PlumeResponse>(`${API_BASE}/predictions/plume/${hotspotId}`);
   },
-
-  async getForecast(hotspotId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/predictions/forecast/${hotspotId}`);
-    if (!res.ok) throw new Error("Failed to fetch forecast");
-    return res.json();
+  getExposure(hotspotId: string): Promise<ExposureResponse> {
+    return fetchJson<ExposureResponse>(`${API_BASE}/predictions/exposure/${hotspotId}`);
   },
-
-  async getCorridors() {
-    const res = await fetch(`${API_BASE}/api/v1/geospatial/corridors`);
-    if (!res.ok) throw new Error("Failed to fetch corridors");
-    return res.json();
+  getCorridorPredictions(): Promise<CorridorPrediction[]> {
+    return fetchJson<CorridorPrediction[]>(`${API_BASE}/predictions/corridors`);
   },
-
-  async getExposure(hotspotId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/predictions/exposure/${hotspotId}`);
-    if (!res.ok) throw new Error("Failed to fetch exposure");
-    return res.json();
+  getFederationStatus(): Promise<FederationStatusResponse> {
+    return fetchJson<FederationStatusResponse>(`${API_BASE}/federation/status`);
   },
-
-  async postAgentChat(message: string, language: string = "en") {
-    const res = await fetch(`${API_BASE}/api/v1/agent/chat`, {
+  chatWithAgent(message: string, language?: string): Promise<AgentChatResponse> {
+    return fetchJson<AgentChatResponse>(`${API_BASE}/agent/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, language }),
     });
-    if (!res.ok) throw new Error("Agent chat failed");
-    return res.json();
   },
-
-  async getAlerts() {
-    const res = await fetch(`${API_BASE}/api/v1/alerts`);
-    if (!res.ok) throw new Error("Failed to fetch alerts");
-    return res.json();
+  runDemo(): Promise<DemoResponse> {
+    return fetchJson<DemoResponse>(`${API_BASE}/demo/run`, { method: "POST" });
   },
-
-  async getAlert(eventId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/alerts/${eventId}`);
-    if (!res.ok) throw new Error("Failed to fetch alert");
-    return res.json();
+  resetDemo(): Promise<DemoResponse> {
+    return fetchJson<DemoResponse>(`${API_BASE}/demo/reset`, { method: "POST" });
   },
-
-  async acknowledgeAlert(eventId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/alerts/${eventId}/acknowledge`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to acknowledge alert");
-    return res.json();
-  },
-
-  async startAlertAction(eventId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/alerts/${eventId}/action`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to start alert action");
-    return res.json();
-  },
-
-  async resolveAlert(eventId: string) {
-    const res = await fetch(`${API_BASE}/api/v1/alerts/${eventId}/resolve`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to resolve alert");
-    return res.json();
-  },
-
-  async getFederationStatus() {
-    const res = await fetch(`${API_BASE}/api/v1/federation/status`);
-    if (!res.ok) throw new Error("Failed to fetch federation status");
-    return res.json();
-  },
-
-  async getFederationNodes() {
-    const res = await fetch(`${API_BASE}/api/v1/federation/nodes`);
-    if (!res.ok) throw new Error("Failed to fetch federation nodes");
-    return res.json();
-  },
-
-  async getFederationRounds() {
-    const res = await fetch(`${API_BASE}/api/v1/federation/rounds`);
-    if (!res.ok) throw new Error("Failed to fetch federation rounds");
-    return res.json();
-  },
-
-  async runFederationRound() {
-    const res = await fetch(`${API_BASE}/api/v1/federation/round`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to execute federation round");
-    return res.json();
-  }
 };
-
-export default api;

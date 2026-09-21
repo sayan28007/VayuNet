@@ -1,104 +1,69 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import api from "../lib/api";
-import { DashboardMetrics } from "../components/DashboardMetrics";
-import { ObservationList } from "../components/ObservationList";
-import { HotspotList } from "../components/HotspotList";
-import { PredictionPanel } from "../components/PredictionPanel";
-import { CorridorPanel } from "../components/CorridorPanel";
-import { ExposurePanel } from "../components/ExposurePanel";
-import AICommandCenter from "../components/AICommandCenter";
-import AuthorityResponse from "../components/AuthorityResponse";
-import FederatedLearningPanel from "../components/FederatedLearningPanel";
+
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { Alert, FederationStatusResponse, Hotspot } from "@/types/api";
+import Hotspots from "@/components/Hotspots";
+import Alerts from "@/components/Alerts";
+import Predictions from "@/components/Predictions";
+import Corridors from "@/components/Corridors";
+import Federation from "@/components/Federation";
+import GeminiPanel from "@/components/GeminiPanel";
+import Overview from "@/components/Overview";
+import MapPlaceholder from "@/components/MapPlaceholder";
 
 export default function CommandCenterPage() {
-  const [apiStatus, setApiStatus] = useState<string>("Connecting...");
-  const [observations, setObservations] = useState<any[]>([]);
-  const [hotspots, setHotspots] = useState<any[]>([]);
-  const [corridors, setCorridors] = useState<any[]>([]);
-  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
-  const [forecast, setForecast] = useState<any>(null);
-  const [plume, setPlume] = useState<any>(null);
-  const [exposure, setExposure] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [hotspots, setHotspots] = useState<Hotspot[] | null>(null);
+  const [hotspotsError, setHotspotsError] = useState<string | null>(null);
+  const [hotspotsLoading, setHotspotsLoading] = useState(true);
+  const [selectedHotspotId, setSelectedHotspotId] = useState("");
+  const [alerts, setAlerts] = useState<Alert[] | null>(null);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [federation, setFederation] = useState<FederationStatusResponse | null>(null);
+  const [federationError, setFederationError] = useState<string | null>(null);
+  const [federationLoading, setFederationLoading] = useState(true);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const health = await api.getHealth();
-        setApiStatus(health.status ? `Connected (${health.status})` : "Active");
-
-        const obsData = await api.getObservations();
-        setObservations(obsData || []);
-
-        const hotspotData = await api.getHotspots();
-        setHotspots(hotspotData || []);
-        if (hotspotData && hotspotData.length > 0) {
-          setSelectedHotspotId(hotspotData[0].hotspot_id);
-        }
-
-        const corridorData = await api.getCorridors();
-        setCorridors(corridorData || []);
-      } catch (err) {
-        setApiStatus("Backend Offline");
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+  const fetchHotspotsData = useCallback(async () => {
+    setHotspotsLoading(true); setHotspotsError(null);
+    try { const data = await api.getHotspots(); setHotspots(data); if (data?.length) setSelectedHotspotId((prev) => prev || data[0].hotspot_id); }
+    catch (e: unknown) { setHotspotsError(e instanceof Error ? e.message : "Unavailable"); setHotspots(null); }
+    finally { setHotspotsLoading(false); }
+  }, []);
+  const fetchAlertsData = useCallback(async () => {
+    setAlertsLoading(true); setAlertsError(null);
+    try { setAlerts(await api.getAlerts()); }
+    catch (e: unknown) { setAlertsError(e instanceof Error ? e.message : "Unavailable"); setAlerts(null); }
+    finally { setAlertsLoading(false); }
+  }, []);
+  const fetchFederationData = useCallback(async () => {
+    setFederationLoading(true); setFederationError(null);
+    try { setFederation(await api.getFederationStatus()); }
+    catch (e: unknown) { setFederationError(e instanceof Error ? e.message : "Unavailable"); setFederation(null); }
+    finally { setFederationLoading(false); }
   }, []);
 
-  useEffect(() => {
-    if (!selectedHotspotId) return;
-    api.getForecast(selectedHotspotId).then(setForecast).catch(() => setForecast(null));
-    api.getPlume(selectedHotspotId).then(setPlume).catch(() => setPlume(null));
-    api.getExposure(selectedHotspotId).then(setExposure).catch(() => setExposure(null));
-  }, [selectedHotspotId]);
+  useEffect(() => { fetchHotspotsData(); fetchAlertsData(); fetchFederationData(); }, [fetchHotspotsData, fetchAlertsData, fetchFederationData]);
+
+  const handleAlertAction = (updated: Alert) => setAlerts((current) => (current ?? []).map((alert) => alert.event_id === updated.event_id ? updated : alert));
+  const runDemo = async () => { setDemoLoading(true); setDemoError(null); try { await api.runDemo(); await Promise.all([fetchHotspotsData(), fetchAlertsData(), fetchFederationData()]); } catch (e: unknown) { setDemoError(e instanceof Error ? e.message : "Demo run failed"); } finally { setDemoLoading(false); } };
+  const resetDemo = async () => { setDemoLoading(true); setDemoError(null); try { await api.resetDemo(); await Promise.all([fetchHotspotsData(), fetchAlertsData(), fetchFederationData()]); } catch (e: unknown) { setDemoError(e instanceof Error ? e.message : "Demo reset failed"); } finally { setDemoLoading(false); } };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-6 md:p-10 space-y-8">
-      <header className="border-b border-slate-800 pb-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-cyan-400">VayuNet Command Center</h1>
-          <p className="text-xs text-slate-400">Phase 1–6: Telemetry, Predictions, Authority Response & Federated Learning</p>
-        </div>
-        <div className="text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded text-slate-300">
-          Status: {apiStatus}
-        </div>
+    <main className="min-h-screen space-y-6 bg-slate-950 p-4 text-slate-100 sm:p-8">
+      <header className="flex flex-col gap-4 border-b border-slate-800 pb-6 md:flex-row md:items-center md:justify-between">
+        <div><h1 className="text-3xl font-black tracking-tight text-white">VayuNet Command Center</h1><p className="mt-1 text-sm text-slate-400">Hyperlocal pollution intelligence, prediction, response and federated climate action</p></div>
+        <div className="flex gap-2"><button type="button" onClick={runDemo} disabled={demoLoading} className="rounded-xl bg-cyan-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">Run Demo</button><button type="button" onClick={resetDemo} disabled={demoLoading} className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-200 disabled:opacity-50">Reset Demo</button></div>
       </header>
-
-      {/* PHASE 1–4 EXISTING COMMAND CENTER */}
-      <section className="space-y-6">
-        <h2 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-2">Phase 1–4: Telemetry, Hotspots & Predictive Intelligence</h2>
-        
-        <DashboardMetrics observations={observations} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <HotspotList hotspots={hotspots} />
-          <ObservationList observations={observations} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <PredictionPanel forecast={forecast} plume={plume} />
-          <ExposurePanel exposure={exposure} />
-          <CorridorPanel corridors={corridors} />
-        </div>
-      </section>
-
-      {/* PHASE 5: AI COMMAND CENTER & AUTHORITY RESPONSE */}
-      <section className="space-y-6 pt-4 border-t border-slate-800">
-        <h2 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-2">Phase 5: Gemini AI Intelligence & Authority Incident Response</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <AICommandCenter />
-          <AuthorityResponse />
-        </div>
-      </section>
-
-      {/* PHASE 6: FEDERATED LEARNING NETWORK */}
-      <section className="space-y-6 pt-4 border-t border-slate-800">
-        <h2 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-2">Phase 6: Federated Learning Network</h2>
-        <FederatedLearningPanel />
-      </section>
+      {demoError && <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">{demoError}</div>}
+      <Overview hotspots={hotspots} alerts={alerts} federation={federation} />
+      <div className="grid gap-6 lg:grid-cols-2"><Hotspots hotspots={hotspots} loading={hotspotsLoading} error={hotspotsError} selectedHotspotId={selectedHotspotId} onSelectHotspot={setSelectedHotspotId} /><MapPlaceholder /></div>
+      <div className="grid gap-6 lg:grid-cols-2"><Predictions hotspotId={selectedHotspotId} /><Corridors /></div>
+      <Federation federation={federation} loading={federationLoading} error={federationError} />
+      <Alerts alerts={alerts} loading={alertsLoading} error={alertsError} onAlertAction={handleAlertAction} />
+      <GeminiPanel />
     </main>
   );
 }
