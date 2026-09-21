@@ -16,13 +16,14 @@ def get_agent_service() -> GeminiAgentService:
     detector = HotspotDetectorService(obs_repo, ev_repo)
     prediction = PredictionService(detector, obs_repo)
     alert_service = AlertService(detector, prediction)
-    tools = VayuNetTools(detector, prediction, alert_service, obs_repo)
+    tools = VayuNetTools(detector, prediction, alert_service, obs_repo, evidence_repo=ev_repo)
     return GeminiAgentService(tools)
 
 @router.post("/chat", response_model=AgentChatResponse)
 def chat_with_agent(payload: AgentChatRequest, agent: GeminiAgentService = Depends(get_agent_service)):
     try:
-        result = agent.process_query(payload.message, payload.language)
-        return AgentChatResponse(**result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return AgentChatResponse(**agent.process_query(payload.message, payload.language))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Agent request failed")
