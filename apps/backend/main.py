@@ -1,39 +1,47 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
 
-from app.repositories.observation_repo import get_repository
-from app.repositories.evidence_repo import get_evidence_repository
-from app.services.observation_service import ObservationService
-from app.data.synthetic_seed import seed_synthetic_data
+from app.routers.health import router as health_router
+from app.routers.observations import router as observations_router
+from app.routers.geospatial import router as geospatial_router
+from app.routers.evidence import router as evidence_router
+from app.routers.hotspots import router as hotspots_router
+from app.routers.predictions import router as predictions_router
+from app.routers.agent import router as agent_router
+from app.routers.alerts import router as alerts_router
+from app.routers.federation import router as federation_router
+from app.routers.demo import router as demo_router
 
-from app.routers import health, observations, geospatial, evidence, hotspots, predictions, agent, alerts, federation
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="VayuNet - AI-powered hyperlocal pollution intelligence and climate action platform."
+)
 
-app = FastAPI(title="VayuNet Backend API", version="6.0.0")
+allowed_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    obs_service = ObservationService(get_repository())
-    ev_repo = get_evidence_repository()
-    seed_synthetic_data(obs_service, ev_repo)
+app.include_router(health_router)
+app.include_router(observations_router)
+app.include_router(geospatial_router)
+app.include_router(evidence_router)
+app.include_router(hotspots_router)
+app.include_router(predictions_router)
+app.include_router(agent_router)
+app.include_router(alerts_router)
+app.include_router(federation_router)
+app.include_router(demo_router)
 
-@app.get("/")
-def read_root():
-    return {"status": "operational", "system": "VayuNet Phase 6 Federated Learning & Intelligence"}
-
-app.include_router(health.router)
-app.include_router(observations.router)
-app.include_router(geospatial.router)
-app.include_router(evidence.router)
-app.include_router(hotspots.router)
-app.include_router(predictions.router)
-app.include_router(agent.router)
-app.include_router(alerts.router)
-app.include_router(federation.router)
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

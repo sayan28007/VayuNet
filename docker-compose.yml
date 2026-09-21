@@ -1,29 +1,18 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./apps/backend
-      dockerfile: Dockerfile
-    container_name: vayunet-backend
     ports:
-      - '8000:8000'
-    environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
-      - BACKEND_HOST=0.0.0.0
-      - BACKEND_PORT=8000
-      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-    restart: unless-stopped
+      - "8000:8000"
+    env_file:
+      - .env
 
   command-center:
     build:
       context: ./apps/command-center
-      dockerfile: Dockerfile
-    container_name: vayunet-command-center
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
     ports:
-      - '3000:3000'
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:8000
-    restart: unless-stopped
+      - "3000:3000"
+    depends_on:
+      - backend
