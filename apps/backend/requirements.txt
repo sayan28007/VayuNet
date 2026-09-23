@@ -7,3 +7,7 @@ numpy
 scikit-learn
 python-multipart
 google-generativeai
+google-genai
+google-cloud-bigquery
+google-cloud-secret-manager
+earthengine-api

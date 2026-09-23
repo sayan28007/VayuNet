@@ -117,3 +117,15 @@ export interface DemoResponse {
   status: string;
   [key: string]: unknown;
 }
+
+export interface CloudServiceStatus {
+  status: string;
+  [key: string]: unknown;
+}
+
+export interface CloudStatusResponse {
+  bigquery: CloudServiceStatus;
+  secret_manager: CloudServiceStatus;
+  vertex_ai: CloudServiceStatus;
+  earth_engine: CloudServiceStatus;
+}
