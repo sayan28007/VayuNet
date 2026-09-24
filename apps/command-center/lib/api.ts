@@ -24,8 +24,12 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getHotspots(): Promise<Hotspot[]> { return fetchJson<Hotspot[]>(`${API_BASE}/hotspots`); },
-  getAlerts(): Promise<Alert[]> { return fetchJson<Alert[]>(`${API_BASE}/alerts`); },
+  getHotspots(): Promise<Hotspot[]> {
+    return fetchJson<Hotspot[]>(`${API_BASE}/hotspots`);
+  },
+  getAlerts(): Promise<Alert[]> {
+    return fetchJson<Alert[]>(`${API_BASE}/alerts`);
+  },
   updateAlertStatus(eventId: string, action: AlertAction): Promise<Alert> {
     return fetchJson<Alert>(`${API_BASE}/alerts/${eventId}/${action}`, { method: "POST" });
   },
@@ -51,12 +55,41 @@ export const api = {
       body: JSON.stringify({ message, language }),
     });
   },
-  runDemo(): Promise<DemoResponse> { return fetchJson<DemoResponse>(`${API_BASE}/demo/run`, { method: "POST" }); },
-  resetDemo(): Promise<DemoResponse> { return fetchJson<DemoResponse>(`${API_BASE}/demo/reset`, { method: "POST" }); },
+  runDemo(): Promise<DemoResponse> {
+    return fetchJson<DemoResponse>(`${API_BASE}/demo/run`, { method: "POST" });
+  },
+  resetDemo(): Promise<DemoResponse> {
+    return fetchJson<DemoResponse>(`${API_BASE}/demo/reset`, { method: "POST" });
+  },
   getCloudStatus(): Promise<CloudStatusResponse> {
     return fetchJson<CloudStatusResponse>(`${API_BASE}/cloud/status`);
   },
   syncObservationsToBigQuery(): Promise<{ status: string; inserted: number; errors: unknown[] }> {
     return fetchJson(`${API_BASE}/cloud/bigquery/sync`, { method: "POST" });
   },
+
+  // Backward-compatible aliases for older components still present in the repository.
+  postAgentChat(message: string, language: string = "en"): Promise<AgentChatResponse> {
+    return this.chatWithAgent(message, language);
+  },
+  acknowledgeAlert(eventId: string): Promise<Alert> {
+    return this.updateAlertStatus(eventId, "acknowledge");
+  },
+  startAlertAction(eventId: string): Promise<Alert> {
+    return this.updateAlertStatus(eventId, "action");
+  },
+  resolveAlert(eventId: string): Promise<Alert> {
+    return this.updateAlertStatus(eventId, "resolve");
+  },
+  getFederationNodes(): Promise<unknown[]> {
+    return fetchJson<unknown[]>(`${API_BASE}/federation/nodes`);
+  },
+  getFederationRounds(): Promise<unknown[]> {
+    return fetchJson<unknown[]>(`${API_BASE}/federation/rounds`);
+  },
+  runFederationRound(): Promise<unknown> {
+    return fetchJson(`${API_BASE}/federation/round`, { method: "POST" });
+  },
 };
+
+export default api;
