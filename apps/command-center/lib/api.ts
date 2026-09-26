@@ -11,7 +11,7 @@ import type {
   CloudStatusResponse,
 } from "@/types/api";
 
-export type AlertAction = "acknowledge" | "action" | "resolve";
+export type AlertAction = "route" | "acknowledge" | "action" | "resolve";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -67,8 +67,6 @@ export const api = {
   syncObservationsToBigQuery(): Promise<{ status: string; inserted: number; errors: unknown[] }> {
     return fetchJson(`${API_BASE}/cloud/bigquery/sync`, { method: "POST" });
   },
-
-  // Backward-compatible aliases for older components still present in the repository.
   postAgentChat(message: string, language: string = "en"): Promise<AgentChatResponse> {
     return this.chatWithAgent(message, language);
   },
