@@ -1,11 +1,13 @@
 from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
 
+
 class Hotspot(BaseModel):
     hotspot_id: str
     latitude: float
     longitude: float
     score: float = Field(..., ge=0.0, le=1.0)
+    hotspot_score: Optional[float] = Field(None, ge=0.0, le=1.0)
     confidence: float = Field(..., ge=0.0, le=1.0)
     severity: str
     evidence_count: int = Field(..., ge=0)
@@ -16,4 +18,5 @@ class Hotspot(BaseModel):
     data_quality_score: float = 0.0
     explanation: str = ""
     city: Optional[str] = None
+    corridor: Optional[str] = None
     metadata: Dict = Field(default_factory=dict)
