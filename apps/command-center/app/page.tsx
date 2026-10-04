@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { Alert, FederationStatusResponse, Hotspot } from "@/types/api";
 import Alerts from "@/components/Alerts";
@@ -14,6 +14,15 @@ import OperationalMap from "@/components/OperationalMap";
 import DemoHero from "@/components/DemoHero";
 import DemoFlow from "@/components/DemoFlow";
 import ImpactStory from "@/components/ImpactStory";
+import CitySelector from "@/components/CitySelector";
+
+type CityOption = { name: string };
+
+const DEFAULT_CITIES: CityOption[] = [
+  { name: "Visakhapatnam" },
+  { name: "Delhi" },
+  { name: "Mumbai" },
+];
 
 export default function CommandCenterPage() {
   const [hotspots, setHotspots] = useState<Hotspot[] | null>(null);
@@ -28,6 +37,8 @@ export default function CommandCenterPage() {
   const [federationLoading, setFederationLoading] = useState(true);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const [cities, setCities] = useState<CityOption[]>(DEFAULT_CITIES);
+  const [selectedCity, setSelectedCity] = useState("All Cities");
 
   const fetchHotspotsData = useCallback(async () => {
     setHotspotsLoading(true);
@@ -35,7 +46,6 @@ export default function CommandCenterPage() {
     try {
       const data = await api.getHotspots();
       setHotspots(data);
-      if (data?.length) setSelectedHotspotId((prev) => prev || data[0].hotspot_id);
     } catch (e: unknown) {
       setHotspotsError(e instanceof Error ? e.message : "Unavailable");
       setHotspots(null);
@@ -64,7 +74,44 @@ export default function CommandCenterPage() {
     fetchHotspotsData();
     fetchAlertsData();
     fetchFederationData();
+
+    try {
+      const stored = localStorage.getItem("vayunet-cities");
+      if (stored) {
+        const parsed = JSON.parse(stored) as CityOption[];
+        if (Array.isArray(parsed) && parsed.length) setCities(parsed);
+      }
+    } catch {
+      // keep defaults
+    }
   }, [fetchHotspotsData, fetchAlertsData, fetchFederationData]);
+
+  const addCity = (name: string) => {
+    setCities((current) => {
+      if (current.some((city) => city.name.toLowerCase() === name.toLowerCase())) return current;
+      const next = [...current, { name }].sort((a, b) => a.name.localeCompare(b.name));
+      localStorage.setItem("vayunet-cities", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const filteredHotspots = useMemo(() => {
+    if (!hotspots) return null;
+    if (selectedCity === "All Cities") return hotspots;
+    return hotspots.filter((hotspot) => hotspot.city?.toLowerCase() === selectedCity.toLowerCase());
+  }, [hotspots, selectedCity]);
+
+  const filteredAlerts = useMemo(() => {
+    if (!alerts) return null;
+    if (selectedCity === "All Cities") return alerts;
+    const cityHotspotIds = new Set((filteredHotspots ?? []).map((hotspot) => hotspot.hotspot_id));
+    return alerts.filter((alert) => cityHotspotIds.has(alert.hotspot_id));
+  }, [alerts, filteredHotspots, selectedCity]);
+
+  useEffect(() => {
+    const first = filteredHotspots?.[0];
+    setSelectedHotspotId(first?.hotspot_id ?? "");
+  }, [filteredHotspots]);
 
   const refreshAll = async () => {
     await Promise.all([fetchHotspotsData(), fetchAlertsData(), fetchFederationData()]);
@@ -102,14 +149,15 @@ export default function CommandCenterPage() {
         <div className="text-right text-xs text-slate-500">Final demo build</div>
       </header>
 
+      <CitySelector cities={cities} selectedCity={selectedCity} onSelectCity={setSelectedCity} onAddCity={addCity} />
       <DemoHero onRunDemo={runDemo} onResetDemo={resetDemo} loading={demoLoading} />
       {demoError && <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">{demoError}</div>}
 
-      <Overview hotspots={hotspots} alerts={alerts} federation={federation} />
+      <Overview hotspots={filteredHotspots} alerts={filteredAlerts} federation={federation} />
       <DemoFlow />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Hotspots hotspots={hotspots} loading={hotspotsLoading} error={hotspotsError} selectedHotspotId={selectedHotspotId} onSelectHotspot={setSelectedHotspotId} />
-        <OperationalMap hotspots={hotspots} />
+        <Hotspots hotspots={filteredHotspots} loading={hotspotsLoading} error={hotspotsError} selectedHotspotId={selectedHotspotId} onSelectHotspot={setSelectedHotspotId} />
+        <OperationalMap hotspots={filteredHotspots} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Predictions hotspotId={selectedHotspotId} />
@@ -117,7 +165,7 @@ export default function CommandCenterPage() {
       </div>
       <ImpactStory />
       <Federation federation={federation} loading={federationLoading} error={federationError} />
-      <Alerts alerts={alerts} loading={alertsLoading} error={alertsError} onAlertAction={handleAlertAction} />
+      <Alerts alerts={filteredAlerts} loading={alertsLoading} error={alertsError} onAlertAction={handleAlertAction} />
       <GeminiPanel />
     </main>
   );
