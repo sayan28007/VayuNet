@@ -10,7 +10,7 @@ import Federation from "@/components/Federation";
 import GeminiPanel from "@/components/GeminiPanel";
 import Overview from "@/components/Overview";
 import Hotspots from "@/components/Hotspots";
-import MapPlaceholder from "@/components/MapPlaceholder";
+import OperationalMap from "@/components/OperationalMap";
 import DemoHero from "@/components/DemoHero";
 import DemoFlow from "@/components/DemoFlow";
 import ImpactStory from "@/components/ImpactStory";
@@ -35,9 +35,7 @@ export default function CommandCenterPage() {
     try {
       const data = await api.getHotspots();
       setHotspots(data);
-      if (data?.length) {
-        setSelectedHotspotId((prev) => prev || data[0].hotspot_id);
-      }
+      if (data?.length) setSelectedHotspotId((prev) => prev || data[0].hotspot_id);
     } catch (e: unknown) {
       setHotspotsError(e instanceof Error ? e.message : "Unavailable");
       setHotspots(null);
@@ -49,27 +47,17 @@ export default function CommandCenterPage() {
   const fetchAlertsData = useCallback(async () => {
     setAlertsLoading(true);
     setAlertsError(null);
-    try {
-      setAlerts(await api.getAlerts());
-    } catch (e: unknown) {
-      setAlertsError(e instanceof Error ? e.message : "Unavailable");
-      setAlerts(null);
-    } finally {
-      setAlertsLoading(false);
-    }
+    try { setAlerts(await api.getAlerts()); }
+    catch (e: unknown) { setAlertsError(e instanceof Error ? e.message : "Unavailable"); setAlerts(null); }
+    finally { setAlertsLoading(false); }
   }, []);
 
   const fetchFederationData = useCallback(async () => {
     setFederationLoading(true);
     setFederationError(null);
-    try {
-      setFederation(await api.getFederationStatus());
-    } catch (e: unknown) {
-      setFederationError(e instanceof Error ? e.message : "Unavailable");
-      setFederation(null);
-    } finally {
-      setFederationLoading(false);
-    }
+    try { setFederation(await api.getFederationStatus()); }
+    catch (e: unknown) { setFederationError(e instanceof Error ? e.message : "Unavailable"); setFederation(null); }
+    finally { setFederationLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -85,35 +73,23 @@ export default function CommandCenterPage() {
   const runDemo = async () => {
     setDemoLoading(true);
     setDemoError(null);
-    try {
-      await api.runDemo();
-      await refreshAll();
-    } catch (e: unknown) {
-      setDemoError(e instanceof Error ? e.message : "Demo run failed");
-    } finally {
-      setDemoLoading(false);
-    }
+    try { await api.runDemo(); await refreshAll(); }
+    catch (e: unknown) { setDemoError(e instanceof Error ? e.message : "Demo run failed"); }
+    finally { setDemoLoading(false); }
   };
 
   const resetDemo = async () => {
     setDemoLoading(true);
     setDemoError(null);
-    try {
-      await api.resetDemo();
-      await refreshAll();
-    } catch (e: unknown) {
-      setDemoError(e instanceof Error ? e.message : "Demo reset failed");
-    } finally {
-      setDemoLoading(false);
-    }
+    try { await api.resetDemo(); await refreshAll(); }
+    catch (e: unknown) { setDemoError(e instanceof Error ? e.message : "Demo reset failed"); }
+    finally { setDemoLoading(false); }
   };
 
   const handleAlertAction = (updated: Alert) => {
-    setAlerts((current) =>
-      (current ?? []).map((alert) =>
-        alert.event_id === updated.event_id ? updated : alert
-      )
-    );
+    setAlerts((current) => (current ?? []).map((alert) =>
+      alert.event_id === updated.event_id ? updated : alert
+    ));
   };
 
   return (
@@ -121,49 +97,27 @@ export default function CommandCenterPage() {
       <header className="flex flex-col gap-4 border-b border-slate-800 pb-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white">VayuNet Command Center</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Hyperlocal pollution intelligence, prediction, response and federated climate action
-          </p>
+          <p className="mt-1 text-sm text-slate-400">Hyperlocal pollution intelligence, prediction, response and federated climate action</p>
         </div>
         <div className="text-right text-xs text-slate-500">Final demo build</div>
       </header>
 
       <DemoHero onRunDemo={runDemo} onResetDemo={resetDemo} loading={demoLoading} />
-
-      {demoError && (
-        <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">
-          {demoError}
-        </div>
-      )}
+      {demoError && <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">{demoError}</div>}
 
       <Overview hotspots={hotspots} alerts={alerts} federation={federation} />
       <DemoFlow />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Hotspots
-          hotspots={hotspots}
-          loading={hotspotsLoading}
-          error={hotspotsError}
-          selectedHotspotId={selectedHotspotId}
-          onSelectHotspot={setSelectedHotspotId}
-        />
-        <MapPlaceholder />
+        <Hotspots hotspots={hotspots} loading={hotspotsLoading} error={hotspotsError} selectedHotspotId={selectedHotspotId} onSelectHotspot={setSelectedHotspotId} />
+        <OperationalMap hotspots={hotspots} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Predictions hotspotId={selectedHotspotId} />
         <Corridors />
       </div>
       <ImpactStory />
-      <Federation
-        federation={federation}
-        loading={federationLoading}
-        error={federationError}
-      />
-      <Alerts
-        alerts={alerts}
-        loading={alertsLoading}
-        error={alertsError}
-        onAlertAction={handleAlertAction}
-      />
+      <Federation federation={federation} loading={federationLoading} error={federationError} />
+      <Alerts alerts={alerts} loading={alertsLoading} error={alertsError} onAlertAction={handleAlertAction} />
       <GeminiPanel />
     </main>
   );
